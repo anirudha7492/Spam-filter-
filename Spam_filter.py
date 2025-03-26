@@ -1,8 +1,5 @@
-#!/usr/bin/env python
-# coding: utf-8
-
-# In[2]:
-
+# Required Libraries
+# Install using: pip install numpy pandas scikit-learn tensorflow
 
 import pandas as pd
 import numpy as np
@@ -13,109 +10,85 @@ from tensorflow.keras.preprocessing.sequence import pad_sequences
 from tensorflow.keras.models import Sequential
 from tensorflow.keras.layers import Embedding, LSTM, Dense, Bidirectional, Dropout
 from tensorflow.keras.optimizers import Adam
+import pickle
 
-
-# In[3]:
-
-
-# Step 1: Load the dataset
-file_path = "C:\\Users\\ashud\\Downloads\\train.csv"  # Replace with the actual path to your train file
+# Step 1: Load the Dataset
+file_path = "C:\\Users\\ashud\\Downloads\\train.csv"  # Update with the correct path
 data = pd.read_csv(file_path)
 
-
-# In[4]:
-
-
-
-# Check the structure of the data
+# Check Data Structure
 print(data.head())
 print(data.info())
 
-
-# In[5]:
-
-
-# Step 2: Preprocess the text
+# Step 2: Preprocess the Text
 def preprocess_text(text):
-    text = text.lower()  # Convert to lowercase
-    text = re.sub(r"[^a-zA-Z0-9\s]", "", text)  # Remove special characters
+    """
+    Cleans the text by converting it to lowercase and removing special characters.
+
+    Parameters:
+        text (str): Input text to preprocess.
+
+    Returns:
+        str: Cleaned text.
+    """
+    text = text.lower()
+    text = re.sub(r"[^a-zA-Z0-9\s]", "", text)
     return text
 
 data['clean_text'] = data['question_text'].apply(preprocess_text)
 
-
-# In[6]:
-
-
-# Step 3: Tokenize and pad the sequences
-tokenizer = Tokenizer(num_words=20000)  # Adjust the vocabulary size as needed
+# Step 3: Tokenization and Padding
+tokenizer = Tokenizer(num_words=20000)  # Limiting vocabulary to 20,000 words
 tokenizer.fit_on_texts(data['clean_text'])
 
-
-# In[7]:
-
-
-# Convert text to sequences
+# Convert Text to Sequences
 sequences = tokenizer.texts_to_sequences(data['clean_text'])
-X = pad_sequences(sequences, maxlen=100)  # Adjust maxlen based on your dataset
+X = pad_sequences(sequences, maxlen=100)
 
-
-# In[8]:
-
-
-# Extract target variable
+# Extract Target Variable
 y = data['target']
 
-
-# In[9]:
-
-
-# Step 4: Split the data into training and validation sets
+# Step 4: Split Data into Training and Validation Sets
 X_train, X_val, y_train, y_val = train_test_split(X, y, test_size=0.2, random_state=42)
 
+# Step 5: Model Definition
+model = Sequential([
+    Embedding(input_dim=20000, output_dim=128, input_length=100),
+    Bidirectional(LSTM(64, return_sequences=False)),
+    Dropout(0.5),
+    Dense(1, activation='sigmoid')
+])
 
-# In[11]:
+model.compile(optimizer=Adam(learning_rate=0.001), loss='binary_crossentropy', metrics=['accuracy'])
 
-
-# Step 6: Train the model
+# Step 6: Train the Model
 history = model.fit(
     X_train, y_train,
     validation_data=(X_val, y_val),
-    epochs=1,  # Adjust the number of epochs
-    batch_size=20,  # Adjust the batch size
+    epochs=1,  # Adjust based on performance
+    batch_size=20,
     verbose=1
 )
 
-
-# In[12]:
-
-
-# Step 7: Evaluate the model on the validation set
+# Step 7: Evaluate the Model
 val_loss, val_accuracy = model.evaluate(X_val, y_val, verbose=0)
 print(f"Validation Accuracy: {val_accuracy:.4f}")
 
-
-# In[13]:
-
-
-# Step 8: Make predictions on the validation set
+# Step 8: Generate Predictions
 predictions = model.predict(X_val)
 predicted_classes = (predictions > 0.5).astype(int)
 
-# Optional: Save the tokenizer and model
-import pickle
+# Step 9: Save the Model and Tokenizer
 tokenizer_path = "tokenizer.pkl"
 model_path = "spam_filter_model.h5"
 
 with open(tokenizer_path, "wb") as file:
     pickle.dump(tokenizer, file)
-    
+
 model.save(model_path)
 
 print(f"Tokenizer saved to {tokenizer_path}, Model saved to {model_path}")
 
-
-# In[ ]:
 
 
 
